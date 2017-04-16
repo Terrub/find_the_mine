@@ -429,6 +429,7 @@ function addOpenAllButton() {
                 y = j * (button_height + gutter_size) + gutter_size;
 
                 drawOpenButtonAt(button, x, y);
+                button.status = button_status_open
 
             }
 
