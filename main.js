@@ -221,9 +221,10 @@ function createRandomMineCoords(p_num_mines, p_num_rows, p_num_cols) {
             lets imagine a 4x3 grid
             that's a total of 4 * 3 = 12 positions.
 
-            [00][01][02][03]
-            [04][05][06][07]
-            [08][09][10][11]
+          y x 0   1   2   3
+          0 [00][01][02][03]
+          1 [04][05][06][07]
+          2 [08][09][10][11]
 
             So to get position 11 x, y coords I need to divide 11 by number
             of cols (=> 11 / 4 = 2.75 or 2, floored.) to get the y coord.
@@ -231,8 +232,13 @@ function createRandomMineCoords(p_num_mines, p_num_rows, p_num_cols) {
 
             or
 
-            y = Math.floor(mine_number / p_num_cols);
-            x = Math.floor(mine_number % p_num_cols);
+            y = Math.floor(position / num_cols);
+            x = Math.floor(position % num_cols);
+
+            example: (run in console)
+            for (var i=0,n=12;i<n;i++){
+                console.log("x:",i%4,"y:",Math.floor(i/4));
+            }
         */
 
         mine = {
