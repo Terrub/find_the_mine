@@ -484,10 +484,16 @@ function createGrid(num_cols, num_rows) {
 
     grid = {};
 
-    data = initiateGameData(num_cols, num_rows);
-    mine_coords = createRandomMineCoords(num_mines, num_cols, num_rows);
-    fillGameDataWithMines(data, mine_coords);
-    updateSurroundingTiles(data, num_cols, num_rows, mine_coords);
+    grid.createGameData = function() {
+
+        data = initiateGameData(num_rows, num_cols);
+        mine_coords = createRandomMineCoords(num_mines, num_rows, num_cols);
+        fillGameDataWithMines(data, mine_coords);
+        updateSurroundingTiles(data, num_rows, num_cols, mine_coords);
+
+        grid.data = data;
+
+    }
 
     grid.draw = function() {
 
@@ -522,7 +528,10 @@ function createGrid(num_cols, num_rows) {
 
     }
 
-    grid.data = data;
+    grid.reset = function() {
+        grid.createGameData();
+        grid.draw();
+    }
 
     return grid;
 
@@ -679,7 +688,18 @@ function addRightClickEventListner() {
 
 }
 
-function addOpenAllButton() {
+function createUIDiv() {
+
+    var div;
+
+    div = document.createElement("div");
+    document.body.appendChild(div);
+
+    return div;
+
+}
+
+function createOpenAllButton(p_ui) {
 
     var btn;
 
@@ -710,15 +730,32 @@ function addOpenAllButton() {
     btn = document.createElement("button");
     btn.onclick = openAllButtons;
     btn.innerHTML = "OPEN";
-    document.body.appendChild(btn);
+
+    return btn;
+
+}
+
+function createResetButton(p_ui) {
+
+    var btn;
+
+    btn = document.createElement("button");
+    btn.onclick = grid.reset;
+    btn.innerHTML = "RESET";
+
+    return btn;
 
 }
 
 function main() {
 
-    num_rows = 30;
+    var ui_div;
+    var openAllButton;
+    var resetButton;
+
+    num_rows = 16;
     num_cols = 30;
-    num_mines = 180;
+    num_mines = 99;
     button_width = 28;
     button_height = 28;
     gutter_size = 2;
@@ -765,14 +802,22 @@ function main() {
     canvas = createCanvas(canvas_width, canvas_height);
     gl = canvas.getContext('2d');
 
+    ui_div = createUIDiv();
+    openAllButton = createOpenAllButton();
+    resetButton = createResetButton();
+
+    ui_div.appendChild(openAllButton);
+    ui_div.appendChild(resetButton);
+
     document.body.appendChild(canvas);
+    document.body.appendChild(ui_div);
+
+    grid.createGameData();
 
     drawBackground(color(50,50,50));
     grid.draw();
 
     addLeftClickEventListner();
     addRightClickEventListner();
-
-    addOpenAllButton();
 
 }
