@@ -440,7 +440,7 @@ function updateSurroundingTiles(p_data, p_num_rows, p_num_cols, p_mine_coords) {
         // Check for corner tiles,
         // Check for side tiles,
         // Otherwise consider it a center tile,
-        // Update surrounding tiles accordingly.
+        // Add mine count to surrounding tiles accordingly.
         if (x === 0) {
             if (y === 0) {
                 addMineCountToBottomRight(p_data, x, y);
