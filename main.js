@@ -27,6 +27,12 @@ var BUTTON_STATUS_CLOSED;
 var BUTTON_STATUS_OPEN;
 var BUTTON_STATUS_FLAGGED;
 
+var LEFT_MOUSE_BUTTON_DOWN;
+var RIGHT_MOUSE_BUTTON_DOWN;
+var MIDDLE_MOUSE_BUTTON_DOWN;
+var FOURTH_MOUSE_BUTTON_DOWN;
+var FIFTH_MOUSE_BUTTON_DOWN;
+
 var button_closed_color;
 var button_open_color;
 
@@ -477,6 +483,20 @@ function updateSurroundingTiles(p_data, p_num_rows, p_num_cols, p_mine_coords) {
 
 }
 
+/*
+I want to add functionality that opens all the clear spaces (minecount === 0)
+adjacent to the opened space.
+
+I think I want to check all eight neighbours if a clear space is clicked, add
+all the clear spaces found to a list of spaces to check. We can add the first
+clicked space to this list as well, come to think of it. Then work through the
+current list whilst filling the next untill nothing is left to check.
+
+To speed things up i can look into using an exhaustive list of spaces to check
+and remove any spaces already checked from any space that goes into the next
+list.
+*/
+
 function createGrid(num_cols, num_rows) {
 
     var grid;
@@ -563,100 +583,43 @@ function drawBackground(color) {
 
 }
 
-function addLeftClickEventListner() {
+function handleMouseDownEvent(event) {
 
-    var click_hook = null;
-    var oldMouseClick = document.onclick;
+    var x;
+    var y;
+    var row;
+    var col;
+    var button;
+    var cx;
+    var cy;
 
-    function newMouseClick(event) {
+    x = event.clientX;
+    y = event.clientY;
 
-        var x;
-        var y;
-        var row;
-        var col;
+    if (x >= 0 &&
+        x < canvas.width &&
+        y >= 0 &&
+        y < canvas.height) {
 
-        x = event.clientX;
-        y = event.clientY;
+        event.preventDefault();
 
-        if (x >= 0 &&
-            x < canvas.width &&
-            y >= 0 &&
-            y < canvas.height) {
+        col = Math.floor(x / tile_width);
+        row = Math.floor(y / tile_height);
 
-            col = Math.floor(x / tile_width);
-            row = Math.floor(y / tile_height);
+        button = grid.data[col][row];
 
-            button = grid.data[col][row];
+        cx = Math.floor(col * tile_width + gutter_size);
+        cy = Math.floor(row * tile_height + gutter_size);
+
+        if (event.buttons === LEFT_MOUSE_BUTTON_DOWN) {
 
             if (button.status === BUTTON_STATUS_CLOSED) {
-
-                drawOpenButtonAt(
-                    button,
-                    Math.floor(col * tile_width + gutter_size),
-                    Math.floor(row * tile_height + gutter_size)
-                );
+                drawOpenButtonAt(button, cx, cy);
                 button.status = BUTTON_STATUS_OPEN;
-
             }
 
         }
-
-    }
-
-    if (isFunction(oldMouseClick)) {
-
-        click_hook = function(event) {
-
-            oldMouseClick(event);
-            newMouseClick(event);
-
-        }
-
-        report("Outside click function was found. Using post-hook");
-
-    } else {
-
-        click_hook = newMouseClick;
-
-        report("No outside click function exists. Using direct hook");
-
-    }
-
-    document.onclick = click_hook;
-
-}
-
-function addRightClickEventListner() {
-
-    var click_hook = null;
-    var oldContextMenu = document.oncontextmenu;
-
-    function newContextMenu(event) {
-
-        var x;
-        var y;
-        var row;
-        var col;
-        var cx;
-        var cy;
-
-        x = event.clientX;
-        y = event.clientY;
-
-        if (x >= 0 &&
-            x < canvas.width &&
-            y >= 0 &&
-            y < canvas.height) {
-
-            event.preventDefault();
-
-            col = Math.floor(x / tile_width);
-            row = Math.floor(y / tile_height);
-
-            button = grid.data[col][row];
-
-            cx = Math.floor(col * tile_width + gutter_size);
-            cy = Math.floor(row * tile_height + gutter_size);
+        else if (event.buttons === RIGHT_MOUSE_BUTTON_DOWN) {
 
             if (button.status === BUTTON_STATUS_CLOSED) {
                 drawFlagOnButtonAt(button, cx, cy);
@@ -671,26 +634,59 @@ function addRightClickEventListner() {
 
     }
 
-    if (isFunction(oldContextMenu)) {
+}
 
-        click_hook = function(event) {
+function handleMouseUpEvent(event) {
 
-            oldContextMenu(event);
-            newContextMenu(event);
+    var x;
+    var y;
 
-        }
+    x = event.clientX;
+    y = event.clientY;
 
-        report("Outside context menu function was found. Using post-hook");
+    if (x >= 0 &&
+        x < canvas.width &&
+        y >= 0 &&
+        y < canvas.height) {
 
-    } else {
+        event.preventDefault();
 
-        click_hook = newContextMenu;
-
-        report("No outside context menu function exists. Using direct hook");
+        // report("handleMouseUpEvent");
 
     }
 
-    document.oncontextmenu = click_hook;
+}
+
+function handleContextMenuEvent(event) {
+
+    var x;
+    var y;
+
+    x = event.clientX;
+    y = event.clientY;
+
+    if (x >= 0 &&
+        x < canvas.width &&
+        y >= 0 &&
+        y < canvas.height) {
+
+        event.preventDefault();
+
+    }
+
+}
+
+function addEventHandlers() {
+
+    if (isUndefined(window.addEventListener)) {
+
+        reportDependencyMissingError("window.addEventListerner");
+
+    }
+
+    window.addEventListener("mousedown", handleMouseDownEvent);
+    window.addEventListener("mouseup", handleMouseUpEvent);
+    window.addEventListener("contextmenu", handleContextMenuEvent)
 
 }
 
@@ -771,6 +767,12 @@ function main() {
     BUTTON_STATUS_OPEN = 1;
     BUTTON_STATUS_FLAGGED = 2;
 
+    LEFT_MOUSE_BUTTON_DOWN = 1;
+    RIGHT_MOUSE_BUTTON_DOWN = 2;
+    MIDDLE_MOUSE_BUTTON_DOWN = 4;
+    FOURTH_MOUSE_BUTTON_DOWN = 8;
+    FIFTH_MOUSE_BUTTON_DOWN = 16;
+
     button_closed_color = color(80,80,80);
     button_open_color = color(100,100,100);
 
@@ -823,7 +825,6 @@ function main() {
     drawBackground(color(50,50,50));
     grid.draw();
 
-    addLeftClickEventListner();
-    addRightClickEventListner();
+    addEventHandlers();
 
 }
