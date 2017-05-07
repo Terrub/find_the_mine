@@ -185,6 +185,15 @@ function reportUsageError(error) {
 
 }
 
+function reportDependencyMissingError(p_dependency) {
+
+    // Hackish solution for now.
+    var error_string = "Missing dependency:";
+
+    reportError(error_string + p_dependency);
+
+}
+
 var marker = (function define_marker() {
 
     var caller = "first mark";
