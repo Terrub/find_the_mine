@@ -1,5 +1,4 @@
 /*
-
     This is where we contruct the game and the display and do all the passing of
     settings. For instance we can define how large a game is, and thus how large
     our canvas need to be and what not.
@@ -10,6 +9,23 @@
     Use / display a timer?
     etc...
 
+    TODO:
+
+    *   I want to add functionality that opens all the clear spaces
+        (minecount === 0) adjacent to the opened space.
+
+        I think I want to check all eight neighbours if a clear space is
+        clicked, add all the clear spaces found to a list of spaces to check.
+        We can add the first clicked space to this list as well, come to think
+        of it. Then work through the current list whilst filling the next untill
+        nothing is left to check.
+
+        To speed things up i can look into using an exhaustive list of spaces to
+        check and remove any spaces already checked from any space that goes
+        into the next list.
+
+        This may require using indices rather than coordinates though, easier to
+        work with.
 */
 
 console.log("Initiating");
@@ -458,20 +474,6 @@ function updateSurroundingTiles(p_data, p_num_rows, p_num_cols, p_mine_indices) 
     }
 
 }
-
-/*
-I want to add functionality that opens all the clear spaces (minecount === 0)
-adjacent to the opened space.
-
-I think I want to check all eight neighbours if a clear space is clicked, add
-all the clear spaces found to a list of spaces to check. We can add the first
-clicked space to this list as well, come to think of it. Then work through the
-current list whilst filling the next untill nothing is left to check.
-
-To speed things up i can look into using an exhaustive list of spaces to check
-and remove any spaces already checked from any space that goes into the next
-list.
-*/
 
 function triggerLoseConditionForDontOpenMineGameOption() {
 
