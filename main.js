@@ -20,18 +20,22 @@ var grid;
 
 var num_rows;
 var num_cols;
-
 var num_mines;
+var game_status;
 
 var BUTTON_STATUS_CLOSED;
 var BUTTON_STATUS_OPEN;
 var BUTTON_STATUS_FLAGGED;
 
-var LEFT_MOUSE_BUTTON_DOWN;
-var RIGHT_MOUSE_BUTTON_DOWN;
-var MIDDLE_MOUSE_BUTTON_DOWN;
-var FOURTH_MOUSE_BUTTON_DOWN;
-var FIFTH_MOUSE_BUTTON_DOWN;
+var LEFT_MOUSE_BUTTON;
+var RIGHT_MOUSE_BUTTON;
+var MIDDLE_MOUSE_BUTTO;
+var FOURTH_MOUSE_BUTTON;
+var FIFTH_MOUSE_BUTTON;
+
+var GAME_STATUS_PLAYING;
+var GAME_STATUS_LOST;
+var GAME_STATUS_WON;
 
 var button_closed_color;
 var button_open_color;
@@ -167,25 +171,23 @@ function drawFlagOnButtonAt(btn, x, y) {
 
 }
 
-function initiateGameData(p_num_rows, p_num_cols) {
+function initiateGameData(p_num_places) {
 
+    var num_spaces;
     var data;
-    var x;
-    var y;
+    var i;
 
-    data = create2dArray(p_num_cols, p_num_rows);
+    num_spaces = p_num_places;
+    data = Array(num_spaces);
 
-    for (y = 0; y < p_num_rows; y += 1) {
+    i = 0;
+    for (i; i < num_spaces; i += 1) {
 
-        for (x = 0; x < p_num_cols; x += 1) {
-
-            data[x][y] = {
-                isMine: false,
-                status: BUTTON_STATUS_CLOSED,
-                num_mines: 0,
-            };
-
-        }
+        data[i] = {
+            isMine: false,
+            status: BUTTON_STATUS_CLOSED,
+            num_mines: 0,
+        };
 
     }
 
@@ -193,98 +195,70 @@ function initiateGameData(p_num_rows, p_num_cols) {
 
 }
 
-function createRandomMineCoords(p_num_mines, p_num_rows, p_num_cols) {
+function generateRandomMineIndices(p_num_mines, p_num_places) {
 
     var mines_to_place;
-    var mine_coords;
-    var total_mine_positions;
+    var num_places;
+    var mine_indices;
     var available_indices;
     var max_index;
+
     var i;
 
-    var index;
-    var mine_number;
-    var mine;
+    var random_index;
+    var mine_index;
 
     mines_to_place = p_num_mines;
-    mine_coords = [];
-    total_mine_positions = Math.floor(p_num_cols * p_num_rows);
-    available_indices = Array(total_mine_positions);
-    max_index = available_indices.length - 1;
+    num_places = p_num_places;
 
+    mine_indices = [];
+    available_indices = Array(num_places);
+
+    // Fill an array with all possible placeble indices.
     i = 0;
-    for (i; i < total_mine_positions; i += 1) {
+    for (i; i < num_places; i += 1) {
         available_indices[i] = i;
     }
 
     while (mines_to_place > 0) {
 
-        index = generateRandomNumber(0, max_index);
-        mine_number = available_indices.splice(index, 1);
         max_index = available_indices.length - 1;
+        random_index = generateRandomNumber(0, max_index);
+        mine_index = available_indices.splice(random_index, 1)[0];
 
-        /*
-            lets imagine a 4x3 grid
-            that's a total of 4 * 3 = 12 positions.
-
-          y x 0   1   2   3
-          0 [00][01][02][03]
-          1 [04][05][06][07]
-          2 [08][09][10][11]
-
-            So to get position 11 x, y coords I need to divide 11 by number
-            of cols (=> 11 / 4 = 2.75 or 2, floored.) to get the y coord.
-            For the x coord all I need is the remainder (=> 11 % 4 = 3)
-
-            or
-
-            y = Math.floor(position / num_cols);
-            x = Math.floor(position % num_cols);
-
-            example: (run in console)
-            for (var i=0,n=12;i<n;i++){
-                console.log("x:",i%4,"y:",Math.floor(i/4));
-            }
-        */
-
-        mine = {
-            x: Math.floor(mine_number % p_num_cols),
-            y: Math.floor(mine_number / p_num_cols)
-        }
-
-        mine_coords.push(mine);
+        mine_indices.push(mine_index);
 
         mines_to_place -= 1;
 
     }
 
-    return mine_coords;
+    return mine_indices;
 
 }
 
-function fillGameDataWithMines(p_data, p_mine_coords) {
+function fillGameDataWithMines(p_data, p_mine_indices) {
 
+    var mine_indices;
     var i;
     var n;
-    var x;
-    var y;
+    var mine_index;
 
-    var mine;
+    mine_indices = p_mine_indices;
 
     // Go through every point in the mine_coords
     i = 0;
-    n = p_mine_coords.length;
+    n = mine_indices.length;
     for (i; i < n; i += 1) {
 
-        mine = p_mine_coords[i];
+        mine_index = mine_indices[i];
 
-        p_data[mine.x][mine.y].isMine = true;
+        p_data[mine_index].isMine = true;
 
     }
 
 }
 
-function addMineCountToBottomRight(p_data, p_x, p_y) {
+function addMineCountToBottomRight(p_x, p_y) {
 
     /*
         [X][X][X]
@@ -292,13 +266,13 @@ function addMineCountToBottomRight(p_data, p_x, p_y) {
         [X][1][1]
     */
 
-    p_data[p_x + 0][p_y + 1].num_mines += 1;
-    p_data[p_x + 1][p_y + 0].num_mines += 1;
-    p_data[p_x + 1][p_y + 1].num_mines += 1;
+    grid.getItemByCoords(p_x + 0, p_y + 1).num_mines += 1;
+    grid.getItemByCoords(p_x + 1, p_y + 0).num_mines += 1;
+    grid.getItemByCoords(p_x + 1, p_y + 1).num_mines += 1;
 
 }
 
-function addMineCountToBottomLeft(p_data, p_x, p_y) {
+function addMineCountToBottomLeft(p_x, p_y) {
 
     /*
         [X][X][X]
@@ -306,13 +280,13 @@ function addMineCountToBottomLeft(p_data, p_x, p_y) {
         [1][1][X]
     */
 
-    p_data[p_x +-1][p_y + 0].num_mines += 1;
-    p_data[p_x +-1][p_y + 1].num_mines += 1;
-    p_data[p_x + 0][p_y + 1].num_mines += 1;
+    grid.getItemByCoords(p_x +-1, p_y + 0).num_mines += 1;
+    grid.getItemByCoords(p_x +-1, p_y + 1).num_mines += 1;
+    grid.getItemByCoords(p_x + 0, p_y + 1).num_mines += 1;
 
 }
 
-function addMineCountToTopRight(p_data, p_x, p_y) {
+function addMineCountToTopRight(p_x, p_y) {
 
     /*
         [X][1][1]
@@ -320,13 +294,13 @@ function addMineCountToTopRight(p_data, p_x, p_y) {
         [X][X][X]
     */
 
-    p_data[p_x + 0][p_y +-1].num_mines += 1;
-    p_data[p_x + 1][p_y +-1].num_mines += 1;
-    p_data[p_x + 1][p_y + 0].num_mines += 1;
+    grid.getItemByCoords(p_x + 0, p_y +-1).num_mines += 1;
+    grid.getItemByCoords(p_x + 1, p_y +-1).num_mines += 1;
+    grid.getItemByCoords(p_x + 1, p_y + 0).num_mines += 1;
 
 }
 
-function addMineCountToTopLeft(p_data, p_x, p_y) {
+function addMineCountToTopLeft(p_x, p_y) {
 
     /*
         [1][1][X]
@@ -334,13 +308,13 @@ function addMineCountToTopLeft(p_data, p_x, p_y) {
         [X][X][X]
     */
 
-    p_data[p_x +-1][p_y +-1].num_mines += 1;
-    p_data[p_x +-1][p_y + 0].num_mines += 1;
-    p_data[p_x + 0][p_y +-1].num_mines += 1;
+    grid.getItemByCoords(p_x +-1, p_y +-1).num_mines += 1;
+    grid.getItemByCoords(p_x +-1, p_y + 0).num_mines += 1;
+    grid.getItemByCoords(p_x + 0, p_y +-1).num_mines += 1;
 
 }
 
-function addMineCountToBottom(p_data, p_x, p_y) {
+function addMineCountToBottom(p_x, p_y) {
 
     /*
         [X][X][X]
@@ -348,15 +322,15 @@ function addMineCountToBottom(p_data, p_x, p_y) {
         [1][1][1]
     */
 
-    p_data[p_x +-1][p_y + 0].num_mines += 1;
-    p_data[p_x +-1][p_y + 1].num_mines += 1;
-    p_data[p_x + 0][p_y + 1].num_mines += 1;
-    p_data[p_x + 1][p_y + 0].num_mines += 1;
-    p_data[p_x + 1][p_y + 1].num_mines += 1;
+    grid.getItemByCoords(p_x +-1, p_y + 0).num_mines += 1;
+    grid.getItemByCoords(p_x +-1, p_y + 1).num_mines += 1;
+    grid.getItemByCoords(p_x + 0, p_y + 1).num_mines += 1;
+    grid.getItemByCoords(p_x + 1, p_y + 0).num_mines += 1;
+    grid.getItemByCoords(p_x + 1, p_y + 1).num_mines += 1;
 
 }
 
-function addMineCountToRight(p_data, p_x, p_y) {
+function addMineCountToRight(p_x, p_y) {
 
     /*
         [X][1][1]
@@ -364,15 +338,15 @@ function addMineCountToRight(p_data, p_x, p_y) {
         [X][1][1]
     */
 
-    p_data[p_x + 0][p_y +-1].num_mines += 1;
-    p_data[p_x + 0][p_y + 1].num_mines += 1;
-    p_data[p_x + 1][p_y +-1].num_mines += 1;
-    p_data[p_x + 1][p_y + 0].num_mines += 1;
-    p_data[p_x + 1][p_y + 1].num_mines += 1;
+    grid.getItemByCoords(p_x + 0, p_y +-1).num_mines += 1;
+    grid.getItemByCoords(p_x + 0, p_y + 1).num_mines += 1;
+    grid.getItemByCoords(p_x + 1, p_y +-1).num_mines += 1;
+    grid.getItemByCoords(p_x + 1, p_y + 0).num_mines += 1;
+    grid.getItemByCoords(p_x + 1, p_y + 1).num_mines += 1;
 
 }
 
-function addMineCountToLeft(p_data, p_x, p_y) {
+function addMineCountToLeft(p_x, p_y) {
 
     /*
         [1][1][X]
@@ -380,15 +354,15 @@ function addMineCountToLeft(p_data, p_x, p_y) {
         [1][1][X]
     */
 
-    p_data[p_x +-1][p_y +-1].num_mines += 1;
-    p_data[p_x +-1][p_y + 0].num_mines += 1;
-    p_data[p_x +-1][p_y + 1].num_mines += 1;
-    p_data[p_x + 0][p_y +-1].num_mines += 1;
-    p_data[p_x + 0][p_y + 1].num_mines += 1;
+    grid.getItemByCoords(p_x +-1, p_y +-1).num_mines += 1;
+    grid.getItemByCoords(p_x +-1, p_y + 0).num_mines += 1;
+    grid.getItemByCoords(p_x +-1, p_y + 1).num_mines += 1;
+    grid.getItemByCoords(p_x + 0, p_y +-1).num_mines += 1;
+    grid.getItemByCoords(p_x + 0, p_y + 1).num_mines += 1;
 
 }
 
-function addMineCountToTop(p_data, p_x, p_y) {
+function addMineCountToTop(p_x, p_y) {
 
     /*
         [1][1][1]
@@ -396,15 +370,15 @@ function addMineCountToTop(p_data, p_x, p_y) {
         [X][X][X]
     */
 
-    p_data[p_x +-1][p_y +-1].num_mines += 1;
-    p_data[p_x +-1][p_y + 0].num_mines += 1;
-    p_data[p_x + 0][p_y +-1].num_mines += 1;
-    p_data[p_x + 1][p_y +-1].num_mines += 1;
-    p_data[p_x + 1][p_y + 0].num_mines += 1;
+    grid.getItemByCoords(p_x +-1, p_y +-1).num_mines += 1;
+    grid.getItemByCoords(p_x +-1, p_y + 0).num_mines += 1;
+    grid.getItemByCoords(p_x + 0, p_y +-1).num_mines += 1;
+    grid.getItemByCoords(p_x + 1, p_y +-1).num_mines += 1;
+    grid.getItemByCoords(p_x + 1, p_y + 0).num_mines += 1;
 
 }
 
-function addMineCountToAllEight(p_data, p_x, p_y) {
+function addMineCountToAllEight(p_x, p_y) {
 
     /*
         [1][1][1]
@@ -412,36 +386,38 @@ function addMineCountToAllEight(p_data, p_x, p_y) {
         [1][1][1]
     */
 
-    p_data[p_x +-1][p_y +-1].num_mines += 1;
-    p_data[p_x +-1][p_y + 0].num_mines += 1;
-    p_data[p_x +-1][p_y + 1].num_mines += 1;
-    p_data[p_x + 0][p_y +-1].num_mines += 1;
-    p_data[p_x + 0][p_y + 1].num_mines += 1;
-    p_data[p_x + 1][p_y +-1].num_mines += 1;
-    p_data[p_x + 1][p_y + 0].num_mines += 1;
-    p_data[p_x + 1][p_y + 1].num_mines += 1;
+    grid.getItemByCoords(p_x +-1, p_y +-1).num_mines += 1;
+    grid.getItemByCoords(p_x +-1, p_y + 0).num_mines += 1;
+    grid.getItemByCoords(p_x +-1, p_y + 1).num_mines += 1;
+    grid.getItemByCoords(p_x + 0, p_y +-1).num_mines += 1;
+    grid.getItemByCoords(p_x + 0, p_y + 1).num_mines += 1;
+    grid.getItemByCoords(p_x + 1, p_y +-1).num_mines += 1;
+    grid.getItemByCoords(p_x + 1, p_y + 0).num_mines += 1;
+    grid.getItemByCoords(p_x + 1, p_y + 1).num_mines += 1;
 
 }
 
-function updateSurroundingTiles(p_data, p_num_rows, p_num_cols, p_mine_coords) {
+function updateSurroundingTiles(p_data, p_num_rows, p_num_cols, p_mine_indices) {
 
-    // assuming a 2d array;
     var i;
     var n;
+
     var x;
     var y;
     var nx;
     var ny;
-    var mine;
+    var mine_index;
 
-    // Go through every point in the mine_coords
+    // Go through every index in the provided mine indices
     i = 0;
-    n = p_mine_coords.length;
-    for (i; i < n; i += 1) {
-        mine = p_mine_coords[i];
+    n = p_mine_indices.length;
 
-        x = mine.x;
-        y = mine.y;
+    for (i; i < n; i += 1) {
+
+        mine_index = p_mine_indices[i];
+
+        x = grid.getXCoordFromIndex(mine_index);
+        y = grid.getYCoordFromIndex(mine_index);
 
         // Check for corner tiles,
         // Check for side tiles,
@@ -449,34 +425,34 @@ function updateSurroundingTiles(p_data, p_num_rows, p_num_cols, p_mine_coords) {
         // Add mine count to surrounding tiles accordingly.
         if (x === 0) {
             if (y === 0) {
-                addMineCountToBottomRight(p_data, x, y);
+                addMineCountToBottomRight(x, y);
             }
             else if (y === p_num_rows - 1) {
-                addMineCountToTopRight(p_data, x, y);
+                addMineCountToTopRight(x, y);
             }
             else {
-                addMineCountToRight(p_data, x, y);
+                addMineCountToRight(x, y);
             }
         }
         else if (x === p_num_cols - 1) {
             if (y === 0) {
-                addMineCountToBottomLeft(p_data, x, y);
+                addMineCountToBottomLeft(x, y);
             }
             else if (y === p_num_rows -1) {
-                addMineCountToTopLeft(p_data, x, y);
+                addMineCountToTopLeft(x, y);
             }
             else {
-                addMineCountToLeft(p_data, x, y);
+                addMineCountToLeft(x, y);
             }
         }
         else if (y === 0) {
-            addMineCountToBottom(p_data, x, y);
+            addMineCountToBottom(x, y);
         }
         else if (y === p_num_rows - 1) {
-            addMineCountToTop(p_data, x, y);
+            addMineCountToTop(x, y);
         }
         else {
-            addMineCountToAllEight(p_data, x, y);
+            addMineCountToAllEight(x, y);
         }
 
     }
@@ -497,25 +473,40 @@ and remove any spaces already checked from any space that goes into the next
 list.
 */
 
+function triggerLoseConditionForDontOpenMineGameOption() {
+
+    game_status = GAME_STATUS_LOST;
+
+    openAllButtons();
+
+    alert("GAME OVER");
+
+}
+
+function triggerWinConditionForDontOpenMineGameOption() {
+
+    game_status = GAME_STATUS_WON;
+
+    alert("Congratulations, you found all the mines.");
+
+}
+
 function createGrid(num_cols, num_rows) {
 
     var grid;
     var data;
-    var mine_coords;
-
-    var x;
-    var y;
-
-    var button;
+    var mine_indices;
+    var num_spaces;
 
     grid = {};
 
     grid.createGameData = function() {
 
-        data = initiateGameData(num_rows, num_cols);
-        mine_coords = createRandomMineCoords(num_mines, num_rows, num_cols);
-        fillGameDataWithMines(data, mine_coords);
-        updateSurroundingTiles(data, num_rows, num_cols, mine_coords);
+        data = initiateGameData(num_spaces);
+        mine_indices = generateRandomMineIndices(num_mines, num_spaces);
+
+        fillGameDataWithMines(data, mine_indices);
+        updateSurroundingTiles(data, num_rows, num_cols, mine_indices);
 
         grid.data = data;
 
@@ -523,41 +514,113 @@ function createGrid(num_cols, num_rows) {
 
     grid.draw = function() {
 
-        for (j = 0; j < num_rows; j += 1) {
+        var i;
 
-            for (i = 0; i < num_cols; i += 1) {
+        var button;
+        var calculated_x;
+        var calculated_y;
 
-                button = data[i][j];
+        var opened_a_mine;
+        var opened_places;
 
-                x = i * tile_width + gutter_size;
-                y = j * tile_height + gutter_size;
+        opened_places = 0;
+        opened_a_mine = false;
 
-                if (button.status === BUTTON_STATUS_OPEN) {
+        i = 0;
+        for (i; i < num_spaces; i += 1) {
 
-                    drawOpenButtonAt(button, x, y);
+            button = data[i];
+
+            calculated_x = grid.getXCoordFromIndex(i) * tile_width + gutter_size;
+            calculated_y = grid.getYCoordFromIndex(i) * tile_height + gutter_size;
+
+            if (button.status === BUTTON_STATUS_OPEN) {
+
+                opened_a_mine = button.isMine;
+                opened_places += 1;
+
+                drawOpenButtonAt(button, calculated_x, calculated_y);
+
+            }
+            else if (button.status === BUTTON_STATUS_CLOSED) {
+
+                drawClosedButtonAt(button, calculated_x, calculated_y);
+
+            }
+            else if (button.status === BUTTON_STATUS_FLAGGED) {
+
+                drawFlagOnButtonAt(button, calculated_x, calculated_y);
+
+            }
+            else {
+
+                reportUsageError("Attempt to draw button with unknown status");
+
+            }
+
+            if (game_status === GAME_STATUS_PLAYING) {
+
+                if (opened_a_mine) {
+
+                    triggerLoseConditionForDontOpenMineGameOption();
 
                 }
-                else if (button.status === BUTTON_STATUS_CLOSED) {
 
-                    drawClosedButtonAt(button, x, y);
+                if (opened_places === (num_spaces - num_mines)) {
 
-                }
-                else {
-
-                    reportUsageError("Attempt to draw button with unknown status");
+                    triggerWinConditionForDontOpenMineGameOption();
 
                 }
 
             }
-
         }
 
+    }
+
+    /*
+        lets imagine a 4x3 grid
+        that's a total of 4 * 3 = 12 positions.
+
+      y x 0   1   2   3
+      0 [00][01][02][03]
+      1 [04][05][06][07]
+      2 [08][09][10][11]
+
+        So to get position 11 x, y coords I need to divide 11 by number
+        of cols (=> 11 / 4 = 2.75 or 2, floored.) to get the y coord.
+        For the x coord all I need is the remainder (=> 11 % 4 = 3)
+
+        or
+
+        y = Math.floor(position / num_cols);
+        x = Math.floor(position % num_cols);
+
+        example: (run in console)
+        for (var i=0,n=12;i<n;i++){
+            console.log("x:",i%4,"y:",Math.floor(i/4));
+        }
+    */
+
+    grid.getXCoordFromIndex = function(p_index) {
+        return Math.floor(p_index % num_cols);
+    }
+
+    grid.getYCoordFromIndex = function(p_index) {
+        return Math.floor(p_index / num_cols);
+    }
+
+    grid.getItemByCoords = function(p_x, p_y) {
+        var index;
+        index = Math.floor(p_y * num_cols) + p_x;
+        return data[index];
     }
 
     grid.reset = function() {
         grid.createGameData();
         grid.draw();
     }
+
+    num_spaces = num_cols * num_rows;
 
     return grid;
 
@@ -587,50 +650,56 @@ function handleMouseDownEvent(event) {
 
     var x;
     var y;
-    var row;
+    var clicked_inside_canvas;
+
     var col;
+    var row;
     var button;
-    var cx;
-    var cy;
 
     x = event.clientX;
     y = event.clientY;
 
-    if (x >= 0 &&
+    clicked_inside_canvas = (
+        x >= 0 &&
         x < canvas.width &&
         y >= 0 &&
-        y < canvas.height) {
+        y < canvas.height
+    );
+
+    if (clicked_inside_canvas) {
 
         event.preventDefault();
 
         col = Math.floor(x / tile_width);
         row = Math.floor(y / tile_height);
 
-        button = grid.data[col][row];
+        button = grid.getItemByCoords(col, row);
 
-        cx = Math.floor(col * tile_width + gutter_size);
-        cy = Math.floor(row * tile_height + gutter_size);
-
-        if (event.buttons === LEFT_MOUSE_BUTTON_DOWN) {
+        if (event.buttons === LEFT_MOUSE_BUTTON) {
 
             if (button.status === BUTTON_STATUS_CLOSED) {
-                drawOpenButtonAt(button, cx, cy);
+
                 button.status = BUTTON_STATUS_OPEN;
+
             }
 
         }
-        else if (event.buttons === RIGHT_MOUSE_BUTTON_DOWN) {
+        else if (event.buttons === RIGHT_MOUSE_BUTTON) {
 
             if (button.status === BUTTON_STATUS_CLOSED) {
-                drawFlagOnButtonAt(button, cx, cy);
+
                 button.status = BUTTON_STATUS_FLAGGED;
+
             }
             else if (button.status === BUTTON_STATUS_FLAGGED) {
-                drawClosedButtonAt(button, cx, cy);
+
                 button.status = BUTTON_STATUS_CLOSED;
+
             }
 
         }
+
+        grid.draw();
 
     }
 
@@ -640,18 +709,21 @@ function handleMouseUpEvent(event) {
 
     var x;
     var y;
+    var clicked_inside_canvas;
 
     x = event.clientX;
     y = event.clientY;
 
-    if (x >= 0 &&
+    clicked_inside_canvas = (
+        x >= 0 &&
         x < canvas.width &&
         y >= 0 &&
-        y < canvas.height) {
+        y < canvas.height
+    );
+
+    if (clicked_inside_canvas) {
 
         event.preventDefault();
-
-        // report("handleMouseUpEvent");
 
     }
 
@@ -661,14 +733,19 @@ function handleContextMenuEvent(event) {
 
     var x;
     var y;
+    var clicked_inside_canvas;
 
     x = event.clientX;
     y = event.clientY;
 
-    if (x >= 0 &&
+    clicked_inside_canvas = (
+        x >= 0 &&
         x < canvas.width &&
         y >= 0 &&
-        y < canvas.height) {
+        y < canvas.height
+    );
+
+    if (clicked_inside_canvas) {
 
         event.preventDefault();
 
@@ -701,33 +778,35 @@ function createUIDiv() {
 
 }
 
+function openAllButtons() {
+
+    var i;
+    var n;
+    var button;
+
+    i = 0;
+    n = num_rows * num_cols;
+
+    for (i; i < n; i += 1) {
+
+        button = grid.data[i];
+
+        button.status = BUTTON_STATUS_OPEN;
+
+    }
+
+    grid.draw();
+
+}
+
+function resetGame() {
+    game_status = GAME_STATUS_PLAYING;
+    grid.reset();
+}
+
 function createOpenAllButton(p_ui) {
 
     var btn;
-
-    function openAllButtons() {
-
-        var j;
-        var i;
-        var button;
-
-        for (j = 0; j < num_rows; j += 1) {
-
-            for (i = 0; i < num_cols; i += 1) {
-
-                button = grid.data[i][j];
-
-                x = i * tile_width + gutter_size;
-                y = j * tile_height + gutter_size;
-
-                drawOpenButtonAt(button, x, y);
-                button.status = BUTTON_STATUS_OPEN
-
-            }
-
-        }
-
-    }
 
     btn = document.createElement("button");
     btn.onclick = openAllButtons;
@@ -742,7 +821,7 @@ function createResetButton(p_ui) {
     var btn;
 
     btn = document.createElement("button");
-    btn.onclick = grid.reset;
+    btn.onclick = resetGame;
     btn.innerHTML = "RESET";
 
     return btn;
@@ -763,15 +842,21 @@ function main() {
     gutter_size = 2;
     font_size_modifier = 0.7;
 
+    GAME_STATUS_PLAYING = 0;
+    GAME_STATUS_LOST = 1;
+    GAME_STATUS_WON = 2;
+
+    game_status = GAME_STATUS_PLAYING;
+
     BUTTON_STATUS_CLOSED = 0;
     BUTTON_STATUS_OPEN = 1;
     BUTTON_STATUS_FLAGGED = 2;
 
-    LEFT_MOUSE_BUTTON_DOWN = 1;
-    RIGHT_MOUSE_BUTTON_DOWN = 2;
-    MIDDLE_MOUSE_BUTTON_DOWN = 4;
-    FOURTH_MOUSE_BUTTON_DOWN = 8;
-    FIFTH_MOUSE_BUTTON_DOWN = 16;
+    LEFT_MOUSE_BUTTON = 1;
+    RIGHT_MOUSE_BUTTON = 2;
+    MIDDLE_MOUSE_BUTTON = 4;
+    FOURTH_MOUSE_BUTTON = 8;
+    FIFTH_MOUSE_BUTTON = 16;
 
     button_closed_color = color(80,80,80);
     button_open_color = color(100,100,100);
@@ -796,10 +881,7 @@ function main() {
         eight_mine_color
     ];
 
-    grid = createGrid(
-        num_cols,
-        num_rows
-    );
+    grid = createGrid(num_cols, num_rows);
 
     tile_width = button_width + gutter_size;
     tile_height = button_height + gutter_size;
@@ -820,10 +902,9 @@ function main() {
     document.body.appendChild(canvas);
     document.body.appendChild(ui_div);
 
-    grid.createGameData();
-
     drawBackground(color(50,50,50));
-    grid.draw();
+
+    resetGame();
 
     addEventHandlers();
 
