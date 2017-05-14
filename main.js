@@ -626,6 +626,69 @@ function openButtonAt(p_col, p_row) {
     }
 }
 
+function attemptOpenButtonsInBulkAt(p_col, p_row) {
+    var num_spaces_flagged;
+    var num_expected_flagged_spaces;
+    var to_open_spaces_indices;
+    var status_changed;
+    var i;
+    var n;
+    var col_offset;
+    var row_offset;
+    var col;
+    var row;
+    var button_index;
+    var button;
+
+    num_spaces_flagged = 0;
+    num_expected_flagged_spaces = 0;
+    to_open_spaces_indices = [];
+    status_changed = false;
+    i = 0;
+    n = 9;
+
+    // Go through all positions in a 3x3 kernel.
+    for (i; i < n; i += 1) {
+        col_offset = Math.floor(1 - (i % 3));
+        row_offset = Math.floor(1 - Math.floor(i / 3));
+
+        col = p_col + col_offset;
+        row = p_row + row_offset;
+
+        button_index = grid.getIndexFromCoords(col, row);
+        if (button_index === -1) {
+            continue;
+        }
+
+        button = grid.data[button_index];
+        // Found the kernel
+        if (col_offset === 0 && row_offset === 0) {
+            num_expected_flagged_spaces = button.num_mines;
+        }
+
+        if (button.status === BUTTON_STATUS_FLAGGED) {
+            num_spaces_flagged += 1;
+        }
+        else if (button.status === BUTTON_STATUS_CLOSED) {
+            to_open_spaces_indices.push(button_index);
+        }
+    }
+
+    if (num_spaces_flagged === num_expected_flagged_spaces) {
+        i = 0;
+        n = to_open_spaces_indices.length;
+        for (i; i < n; i += 1) {
+            button_index = to_open_spaces_indices[i];
+            col = grid.getXCoordFromIndex(button_index);
+            row = grid.getYCoordFromIndex(button_index);
+            openButtonAt(col, row);
+            status_changed = true;
+        }
+    }
+
+    return status_changed;
+}
+
 function handleMouseDownEvent(event) {
     var x;
     var y;
@@ -657,6 +720,7 @@ function handleMouseDownEvent(event) {
             return;
         }
 
+        // All these status checks should be done elsewhere.
         space = grid.getItemByCoords(col, row);
         if (event.buttons === LEFT_MOUSE_BUTTON) {
             if (space.status === BUTTON_STATUS_CLOSED) {
@@ -674,7 +738,13 @@ function handleMouseDownEvent(event) {
                 status_changed = true;
             }
         }
+        else if (event.buttons === (LEFT_MOUSE_BUTTON + RIGHT_MOUSE_BUTTON)) {
+            if (space.status === BUTTON_STATUS_OPEN && !space.isMine) {
+                status_changed = attemptOpenButtonsInBulkAt(col, row);
+            }
+        }
 
+        // This belongs in the grid logic, not here.
         if (status_changed) {
             grid.draw();
         }
@@ -756,8 +826,7 @@ function openAllButtons() {
     var button;
 
     i = 0;
-    n = num_rows * num_cols;
-    for (i; i < n; i += 1) {
+    for (i; i < num_spaces; i += 1) {
         button = grid.data[i];
         button.status = BUTTON_STATUS_OPEN;
     }
@@ -804,7 +873,6 @@ function openEmptyNeighboursByIndex(p_index) {
         }
 
         button = grid.data[button_index];
-        if (isUndefined(button)) {debugger;}
         if (button.status !== BUTTON_STATUS_CLOSED) {
             continue;
         }
