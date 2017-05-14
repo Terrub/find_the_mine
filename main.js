@@ -94,25 +94,6 @@ function color(p_r, p_g, p_b, p_a) {
 
 }
 
-function create2dArray(c, r) {
-
-    var result;
-
-    var i;
-    var n;
-
-    result = Array(c);
-
-    for (i = 0; i < c; i += 1) {
-
-        result[i] = Array(r);
-
-    }
-
-    return result;
-
-}
-
 function getColorFromNumMines(num_mines) {
 
     return mine_colors[num_mines - 1];
