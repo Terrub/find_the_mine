@@ -607,6 +607,34 @@ function openButtonAt(p_col, p_row) {
     }
 }
 
+function reportFoundUnexpectedSpaceStatusOnFlagError(p_status) {
+    var error_message;
+
+    error_message = formatise(
+        "Found space with status: {@1:s}, expected {@2:s} or {@3:s}",
+        p_status,
+        BUTTON_STATUS_CLOSED,
+        BUTTON_STATUS_FLAGGED
+    );
+    reportError(error_message);
+}
+
+function toggleFlagOnSpaceAt(p_col, p_row) {
+    var space;
+
+    space = grid.getItemByCoords(p_col, p_row);
+    if (space.status === BUTTON_STATUS_CLOSED) {
+        space.status = BUTTON_STATUS_FLAGGED;
+    }
+    else if (space.status === BUTTON_STATUS_FLAGGED) {
+        space.status = BUTTON_STATUS_CLOSED;
+    }
+    else {
+        reportFoundUnexpectedSpaceStatusOnFlagError(space.status);
+    }
+    grid.invalidateProperties();
+}
+
 function attemptOpenButtonsInBulkAt(p_col, p_row) {
     var num_spaces_flagged;
     var num_expected_flagged_spaces;
@@ -710,14 +738,7 @@ function handleMouseDownEvent(event) {
             }
         }
         else if (event.buttons === RIGHT_MOUSE_BUTTON) {
-            if (space.status === BUTTON_STATUS_CLOSED) {
-                space.status = BUTTON_STATUS_FLAGGED;
-                status_changed = true;
-            }
-            else if (space.status === BUTTON_STATUS_FLAGGED) {
-                space.status = BUTTON_STATUS_CLOSED;
-                status_changed = true;
-            }
+            ToggleFlagOnSpaceAt(col, row);
         }
         else if (event.buttons === (LEFT_MOUSE_BUTTON + RIGHT_MOUSE_BUTTON)) {
             if (space.status === BUTTON_STATUS_OPEN && !space.isMine) {
