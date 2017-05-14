@@ -497,8 +497,10 @@ function createGrid(num_cols, num_rows) {
     grid.createGameData = function() {
         data = initiateGameData(num_spaces);
         mine_indices = generateRandomMineIndices(num_mines, num_spaces);
+
         fillGameDataWithMines(data, mine_indices);
         updateSurroundingTiles(data, num_rows, num_cols, mine_indices);
+
         grid.data = data;
     }
 
@@ -594,16 +596,19 @@ function createCanvas(p_width, p_height) {
     return canvas;
 }
 
-function openButtonAt(p_col, p_row) {
-    var button;
+function openSpaceAt(p_col, p_row) {
+    var space;
 
-    button = grid.getItemByCoords(p_col, p_row);
-    button.status = BUTTON_STATUS_OPEN;
-
-    // Found an empty button. Open any empty neighbours to speed things up.
-    if (button.num_mines === 0 && !button.isMine) {
-        index = grid.getIndexFromCoords(p_col, p_row);
-        openEmptyNeighboursByIndex(index);
+    space = grid.getItemByCoords(p_col, p_row);
+    // Early exit
+    if (space.status === BUTTON_STATUS_CLOSED) {
+        space.status = BUTTON_STATUS_OPEN;
+        // Found an empty space. Open any empty neighbours to speed things up.
+        if (space.num_mines === 0 && !space.isMine) {
+            index = grid.getIndexFromCoords(p_col, p_row);
+            openEmptyNeighboursByIndex(index);
+        }
+        grid.draw();
     }
 }
 
@@ -625,14 +630,12 @@ function toggleFlagOnSpaceAt(p_col, p_row) {
     space = grid.getItemByCoords(p_col, p_row);
     if (space.status === BUTTON_STATUS_CLOSED) {
         space.status = BUTTON_STATUS_FLAGGED;
+        grid.draw();
     }
     else if (space.status === BUTTON_STATUS_FLAGGED) {
         space.status = BUTTON_STATUS_CLOSED;
+        grid.draw();
     }
-    else {
-        reportFoundUnexpectedSpaceStatusOnFlagError(space.status);
-    }
-    grid.invalidateProperties();
 }
 
 function attemptOpenButtonsInBulkAt(p_col, p_row) {
@@ -690,7 +693,7 @@ function attemptOpenButtonsInBulkAt(p_col, p_row) {
             button_index = to_open_spaces_indices[i];
             col = grid.getXCoordFromIndex(button_index);
             row = grid.getYCoordFromIndex(button_index);
-            openButtonAt(col, row);
+            openSpaceAt(col, row);
             status_changed = true;
         }
     }
@@ -732,23 +735,15 @@ function handleMouseDownEvent(event) {
         // All these status checks should be done elsewhere.
         space = grid.getItemByCoords(col, row);
         if (event.buttons === LEFT_MOUSE_BUTTON) {
-            if (space.status === BUTTON_STATUS_CLOSED) {
-                openButtonAt(col, row);
-                status_changed = true;
-            }
+            openSpaceAt(col, row);
         }
         else if (event.buttons === RIGHT_MOUSE_BUTTON) {
-            ToggleFlagOnSpaceAt(col, row);
+            toggleFlagOnSpaceAt(col, row);
         }
         else if (event.buttons === (LEFT_MOUSE_BUTTON + RIGHT_MOUSE_BUTTON)) {
             if (space.status === BUTTON_STATUS_OPEN && !space.isMine) {
                 status_changed = attemptOpenButtonsInBulkAt(col, row);
             }
-        }
-
-        // This belongs in the grid logic, not here.
-        if (status_changed) {
-            grid.draw();
         }
     }
 }
