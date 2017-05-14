@@ -645,6 +645,7 @@ function attemptOpenButtonsInBulkAt(p_col, p_row) {
     var status_changed;
     var i;
     var n;
+
     var col_offset;
     var row_offset;
     var col;
@@ -656,9 +657,14 @@ function attemptOpenButtonsInBulkAt(p_col, p_row) {
     num_expected_flagged_spaces = 0;
     to_open_spaces_indices = [];
     status_changed = false;
+
+    space = grid.getItemByCoords(p_col, p_row);
+    if (space.status !== BUTTON_STATUS_OPEN || space.isMine) {
+        return;
+    }
+
     i = 0;
     n = 9;
-
     // Go through all positions in a 3x3 kernel.
     for (i; i < n; i += 1) {
         col_offset = Math.floor(1 - (i % 3));
@@ -698,7 +704,9 @@ function attemptOpenButtonsInBulkAt(p_col, p_row) {
         }
     }
 
-    return status_changed;
+    if (status_changed) {
+        grid.draw();
+    }
 }
 
 function handleMouseDownEvent(event) {
@@ -741,9 +749,7 @@ function handleMouseDownEvent(event) {
             toggleFlagOnSpaceAt(col, row);
         }
         else if (event.buttons === (LEFT_MOUSE_BUTTON + RIGHT_MOUSE_BUTTON)) {
-            if (space.status === BUTTON_STATUS_OPEN && !space.isMine) {
-                status_changed = attemptOpenButtonsInBulkAt(col, row);
-            }
+            attemptOpenButtonsInBulkAt(col, row);
         }
     }
 }
