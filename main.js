@@ -733,15 +733,15 @@ function handleMouseDownEvent(event) {
     if (clicked_inside_canvas) {
         event.preventDefault();
 
+        // TODO:    Further refactor our this col/row logic here. It's not
+        //          something the mouse down handler should know about.
         col = Math.floor(x / tile_width);
         row = Math.floor(y / tile_height);
         if (col >= num_cols || row >= num_rows) {
-            // We're out of bounds, probably hit the bottom/right gutter. Just abort.
+            // We're out of bounds, probably hit the bottom/right gutter.
             return;
         }
 
-        // All these status checks should be done elsewhere.
-        space = grid.getItemByCoords(col, row);
         if (event.buttons === LEFT_MOUSE_BUTTON) {
             openSpaceAt(col, row);
         }
