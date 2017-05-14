@@ -28,7 +28,7 @@
         work with.
 */
 
-console.log("Initiating");
+report("declaring");
 
 var canvas;
 var gl;
@@ -36,8 +36,10 @@ var grid;
 
 var num_rows;
 var num_cols;
+var num_spaces;
 var num_mines;
 var game_status;
+var game_status_display;
 
 var BUTTON_STATUS_CLOSED;
 var BUTTON_STATUS_OPEN;
@@ -79,6 +81,8 @@ var six_mine_color;
 var seven_mine_color;
 var eight_mine_color;
 
+var background_color;
+
 function color(p_r, p_g, p_b, p_a) {
 
     var r = isDefined(p_r) ? p_r : 0;
@@ -112,6 +116,19 @@ function create2dArray(c, r) {
 function getColorFromNumMines(num_mines) {
 
     return mine_colors[num_mines - 1];
+
+}
+
+function clearCanvas() {
+
+    gl.clearRect(0, 0, canvas.width, canvas.height);
+
+}
+
+function drawBackground() {
+
+    gl.fillStyle = background_color;
+    gl.fillRect(0, 0, canvas.width, canvas.height);
 
 }
 
@@ -163,7 +180,6 @@ function drawOpenButtonAt(btn, x, y) {
 function drawClosedButtonAt(btn, x, y) {
 
     gl.fillStyle = button_closed_color;
-
     gl.fillRect(x, y, button_width, button_height);
 
 }
@@ -172,6 +188,9 @@ function drawFlagOnButtonAt(btn, x, y) {
 
     var text;
     var font_size;
+
+    gl.fillStyle = button_closed_color;
+    gl.fillRect(x, y, button_width, button_height);
 
     text = String.fromCharCode('9873');
     font_size = Math.floor((button_height - 6) * font_size_modifier);
@@ -187,46 +206,100 @@ function drawFlagOnButtonAt(btn, x, y) {
 
 }
 
-function initiateGameData(p_num_places) {
+function triggerLoseConditionForDontOpenMineGameOption() {
 
-    var num_spaces;
-    var data;
+    game_status = GAME_STATUS_LOST;
+
+    openAllButtons();
+
+    game_status_display.innerHTML = "GAME OVER";
+
+}
+
+function triggerWinConditionForDontOpenMineGameOption() {
+
+    game_status = GAME_STATUS_WON;
+
+    game_status_display.innerHTML = "Congratulations, you found all the mines.";
+
+}
+
+function drawButtonStates() {
     var i;
+    var button;
+    var calculated_x;
+    var calculated_y;
+    var opened_a_mine;
+    var opened_places;
 
-    num_spaces = p_num_places;
-    data = Array(num_spaces);
+    opened_places = 0;
+    opened_a_mine = false;
 
     i = 0;
     for (i; i < num_spaces; i += 1) {
+        button = grid.data[i];
 
+        calculated_x = grid.getXCoordFromIndex(i) * tile_width + gutter_size;
+        calculated_y = grid.getYCoordFromIndex(i) * tile_height + gutter_size;
+
+        if (button.status === BUTTON_STATUS_OPEN) {
+            opened_a_mine = button.isMine;
+            opened_places += 1;
+
+            drawOpenButtonAt(button, calculated_x, calculated_y);
+        }
+        else if (button.status === BUTTON_STATUS_CLOSED) {
+            drawClosedButtonAt(button, calculated_x, calculated_y);
+        }
+        else if (button.status === BUTTON_STATUS_FLAGGED) {
+            drawFlagOnButtonAt(button, calculated_x, calculated_y);
+        }
+        else {
+            reportUsageError("Attempt to draw button with unknown status");
+        }
+
+        if (game_status === GAME_STATUS_PLAYING) {
+            if (opened_a_mine) {
+                triggerLoseConditionForDontOpenMineGameOption();
+            }
+
+            if (opened_places === (num_spaces - num_mines)) {
+                triggerWinConditionForDontOpenMineGameOption();
+            }
+        }
+    }
+}
+
+function initiateGameData() {
+    var data;
+    var i;
+
+    data = Array(num_spaces);
+    i = 0;
+
+    for (i; i < num_spaces; i += 1) {
         data[i] = {
             isMine: false,
             status: BUTTON_STATUS_CLOSED,
             num_mines: 0,
         };
-
     }
 
     return data;
-
 }
 
 function generateRandomMineIndices(p_num_mines, p_num_places) {
-
     var mines_to_place;
     var num_places;
     var mine_indices;
     var available_indices;
     var max_index;
-
     var i;
-
     var random_index;
     var mine_index;
 
     mines_to_place = p_num_mines;
     num_places = p_num_places;
-
     mine_indices = [];
     available_indices = Array(num_places);
 
@@ -237,15 +310,11 @@ function generateRandomMineIndices(p_num_mines, p_num_places) {
     }
 
     while (mines_to_place > 0) {
-
         max_index = available_indices.length - 1;
         random_index = generateRandomNumber(0, max_index);
         mine_index = available_indices.splice(random_index, 1)[0];
-
         mine_indices.push(mine_index);
-
         mines_to_place -= 1;
-
     }
 
     return mine_indices;
@@ -253,7 +322,6 @@ function generateRandomMineIndices(p_num_mines, p_num_places) {
 }
 
 function fillGameDataWithMines(p_data, p_mine_indices) {
-
     var mine_indices;
     var i;
     var n;
@@ -265,143 +333,113 @@ function fillGameDataWithMines(p_data, p_mine_indices) {
     i = 0;
     n = mine_indices.length;
     for (i; i < n; i += 1) {
-
         mine_index = mine_indices[i];
-
         p_data[mine_index].isMine = true;
-
     }
-
 }
 
 function addMineCountToBottomRight(p_x, p_y) {
-
     /*
         [X][X][X]
         [X][O][1]
         [X][1][1]
     */
-
     grid.getItemByCoords(p_x + 0, p_y + 1).num_mines += 1;
     grid.getItemByCoords(p_x + 1, p_y + 0).num_mines += 1;
     grid.getItemByCoords(p_x + 1, p_y + 1).num_mines += 1;
-
 }
 
 function addMineCountToBottomLeft(p_x, p_y) {
-
     /*
         [X][X][X]
         [1][O][X]
         [1][1][X]
     */
-
     grid.getItemByCoords(p_x +-1, p_y + 0).num_mines += 1;
     grid.getItemByCoords(p_x +-1, p_y + 1).num_mines += 1;
     grid.getItemByCoords(p_x + 0, p_y + 1).num_mines += 1;
-
 }
 
 function addMineCountToTopRight(p_x, p_y) {
-
     /*
         [X][1][1]
         [X][O][1]
         [X][X][X]
     */
-
     grid.getItemByCoords(p_x + 0, p_y +-1).num_mines += 1;
     grid.getItemByCoords(p_x + 1, p_y +-1).num_mines += 1;
     grid.getItemByCoords(p_x + 1, p_y + 0).num_mines += 1;
-
 }
 
 function addMineCountToTopLeft(p_x, p_y) {
-
     /*
         [1][1][X]
         [1][O][X]
         [X][X][X]
     */
-
     grid.getItemByCoords(p_x +-1, p_y +-1).num_mines += 1;
     grid.getItemByCoords(p_x +-1, p_y + 0).num_mines += 1;
     grid.getItemByCoords(p_x + 0, p_y +-1).num_mines += 1;
-
 }
 
 function addMineCountToBottom(p_x, p_y) {
-
     /*
         [X][X][X]
         [1][O][1]
         [1][1][1]
     */
-
     grid.getItemByCoords(p_x +-1, p_y + 0).num_mines += 1;
     grid.getItemByCoords(p_x +-1, p_y + 1).num_mines += 1;
     grid.getItemByCoords(p_x + 0, p_y + 1).num_mines += 1;
     grid.getItemByCoords(p_x + 1, p_y + 0).num_mines += 1;
     grid.getItemByCoords(p_x + 1, p_y + 1).num_mines += 1;
-
 }
 
 function addMineCountToRight(p_x, p_y) {
-
     /*
         [X][1][1]
         [X][O][1]
         [X][1][1]
     */
-
     grid.getItemByCoords(p_x + 0, p_y +-1).num_mines += 1;
     grid.getItemByCoords(p_x + 0, p_y + 1).num_mines += 1;
     grid.getItemByCoords(p_x + 1, p_y +-1).num_mines += 1;
     grid.getItemByCoords(p_x + 1, p_y + 0).num_mines += 1;
     grid.getItemByCoords(p_x + 1, p_y + 1).num_mines += 1;
-
 }
 
 function addMineCountToLeft(p_x, p_y) {
-
     /*
         [1][1][X]
         [1][O][X]
         [1][1][X]
     */
-
     grid.getItemByCoords(p_x +-1, p_y +-1).num_mines += 1;
     grid.getItemByCoords(p_x +-1, p_y + 0).num_mines += 1;
     grid.getItemByCoords(p_x +-1, p_y + 1).num_mines += 1;
     grid.getItemByCoords(p_x + 0, p_y +-1).num_mines += 1;
     grid.getItemByCoords(p_x + 0, p_y + 1).num_mines += 1;
-
 }
 
 function addMineCountToTop(p_x, p_y) {
-
     /*
         [1][1][1]
         [1][O][1]
         [X][X][X]
     */
-
     grid.getItemByCoords(p_x +-1, p_y +-1).num_mines += 1;
     grid.getItemByCoords(p_x +-1, p_y + 0).num_mines += 1;
     grid.getItemByCoords(p_x + 0, p_y +-1).num_mines += 1;
     grid.getItemByCoords(p_x + 1, p_y +-1).num_mines += 1;
     grid.getItemByCoords(p_x + 1, p_y + 0).num_mines += 1;
-
 }
 
 function addMineCountToAllEight(p_x, p_y) {
-
     /*
         [1][1][1]
         [1][O][1]
         [1][1][1]
     */
-
     grid.getItemByCoords(p_x +-1, p_y +-1).num_mines += 1;
     grid.getItemByCoords(p_x +-1, p_y + 0).num_mines += 1;
     grid.getItemByCoords(p_x +-1, p_y + 1).num_mines += 1;
@@ -410,14 +448,11 @@ function addMineCountToAllEight(p_x, p_y) {
     grid.getItemByCoords(p_x + 1, p_y +-1).num_mines += 1;
     grid.getItemByCoords(p_x + 1, p_y + 0).num_mines += 1;
     grid.getItemByCoords(p_x + 1, p_y + 1).num_mines += 1;
-
 }
 
 function updateSurroundingTiles(p_data, p_num_rows, p_num_cols, p_mine_indices) {
-
     var i;
     var n;
-
     var x;
     var y;
     var nx;
@@ -427,9 +462,7 @@ function updateSurroundingTiles(p_data, p_num_rows, p_num_cols, p_mine_indices) 
     // Go through every index in the provided mine indices
     i = 0;
     n = p_mine_indices.length;
-
     for (i; i < n; i += 1) {
-
         mine_index = p_mine_indices[i];
 
         x = grid.getXCoordFromIndex(mine_index);
@@ -470,113 +503,28 @@ function updateSurroundingTiles(p_data, p_num_rows, p_num_cols, p_mine_indices) 
         else {
             addMineCountToAllEight(x, y);
         }
-
     }
-
-}
-
-function triggerLoseConditionForDontOpenMineGameOption() {
-
-    game_status = GAME_STATUS_LOST;
-
-    openAllButtons();
-
-    alert("GAME OVER");
-
-}
-
-function triggerWinConditionForDontOpenMineGameOption() {
-
-    game_status = GAME_STATUS_WON;
-
-    alert("Congratulations, you found all the mines.");
-
 }
 
 function createGrid(num_cols, num_rows) {
-
     var grid;
     var data;
     var mine_indices;
-    var num_spaces;
 
     grid = {};
 
     grid.createGameData = function() {
-
         data = initiateGameData(num_spaces);
         mine_indices = generateRandomMineIndices(num_mines, num_spaces);
-
         fillGameDataWithMines(data, mine_indices);
         updateSurroundingTiles(data, num_rows, num_cols, mine_indices);
-
         grid.data = data;
-
     }
 
     grid.draw = function() {
-
-        var i;
-
-        var button;
-        var calculated_x;
-        var calculated_y;
-
-        var opened_a_mine;
-        var opened_places;
-
-        opened_places = 0;
-        opened_a_mine = false;
-
-        i = 0;
-        for (i; i < num_spaces; i += 1) {
-
-            button = data[i];
-
-            calculated_x = grid.getXCoordFromIndex(i) * tile_width + gutter_size;
-            calculated_y = grid.getYCoordFromIndex(i) * tile_height + gutter_size;
-
-            if (button.status === BUTTON_STATUS_OPEN) {
-
-                opened_a_mine = button.isMine;
-                opened_places += 1;
-
-                drawOpenButtonAt(button, calculated_x, calculated_y);
-
-            }
-            else if (button.status === BUTTON_STATUS_CLOSED) {
-
-                drawClosedButtonAt(button, calculated_x, calculated_y);
-
-            }
-            else if (button.status === BUTTON_STATUS_FLAGGED) {
-
-                drawFlagOnButtonAt(button, calculated_x, calculated_y);
-
-            }
-            else {
-
-                reportUsageError("Attempt to draw button with unknown status");
-
-            }
-
-            if (game_status === GAME_STATUS_PLAYING) {
-
-                if (opened_a_mine) {
-
-                    triggerLoseConditionForDontOpenMineGameOption();
-
-                }
-
-                if (opened_places === (num_spaces - num_mines)) {
-
-                    triggerWinConditionForDontOpenMineGameOption();
-
-                }
-
-            }
-        }
-
+        clearCanvas();
+        drawBackground();
+        drawButtonStates();
     }
 
     /*
@@ -604,17 +552,47 @@ function createGrid(num_cols, num_rows) {
     */
 
     grid.getXCoordFromIndex = function(p_index) {
-        return Math.floor(p_index % num_cols);
+        var result;
+
+        result = Math.floor(p_index % num_cols);
+
+        return result;
     }
 
     grid.getYCoordFromIndex = function(p_index) {
-        return Math.floor(p_index / num_cols);
+        var result;
+
+        result = Math.floor(p_index / num_cols);
+
+        return result;
+    }
+
+    grid.getIndexFromCoords = function(p_x, p_y) {
+        var index;
+
+        if (p_x < 0 || p_x >= num_cols) {
+            index = -1;
+        }
+        else if (p_y < 0 || p_y >= num_rows) {
+            index = -1;
+        }
+        else {
+            index = Math.floor(p_y * num_cols) + p_x;
+        }
+
+        return index;
     }
 
     grid.getItemByCoords = function(p_x, p_y) {
+        var item;
         var index;
-        index = Math.floor(p_y * num_cols) + p_x;
-        return data[index];
+
+        index = grid.getIndexFromCoords(p_x, p_y);
+        if (index !== -1) {
+            item = data[index];
+        }
+
+        return item;
     }
 
     grid.reset = function() {
@@ -622,44 +600,45 @@ function createGrid(num_cols, num_rows) {
         grid.draw();
     }
 
-    num_spaces = num_cols * num_rows;
-
     return grid;
-
 }
 
 function createCanvas(p_width, p_height) {
-
     var canvas;
 
     canvas = document.createElement('canvas');
-
     canvas.width = p_width;
     canvas.height = p_height;
 
     return canvas;
-
 }
 
-function drawBackground(color) {
+function openButtonAt(p_col, p_row) {
+    var button;
 
-    gl.fillStyle = color;
-    gl.fillRect(0, 0, canvas.width, canvas.height);
+    button = grid.getItemByCoords(p_col, p_row);
+    button.status = BUTTON_STATUS_OPEN;
 
+    // Found an empty button. Open any empty neighbours to speed things up.
+    if (button.num_mines === 0 && !button.isMine) {
+        index = grid.getIndexFromCoords(p_col, p_row);
+        openEmptyNeighboursByIndex(index);
+    }
 }
 
 function handleMouseDownEvent(event) {
-
     var x;
     var y;
     var clicked_inside_canvas;
-
     var col;
     var row;
-    var button;
+    var space;
+    var status_changed;
+    var index;
 
     x = event.clientX;
     y = event.clientY;
+    status_changed = false;
 
     clicked_inside_canvas = (
         x >= 0 &&
@@ -669,46 +648,40 @@ function handleMouseDownEvent(event) {
     );
 
     if (clicked_inside_canvas) {
-
         event.preventDefault();
 
         col = Math.floor(x / tile_width);
         row = Math.floor(y / tile_height);
+        if (col >= num_cols || row >= num_rows) {
+            // We're out of bounds, probably hit the bottom/right gutter. Just abort.
+            return;
+        }
 
-        button = grid.getItemByCoords(col, row);
-
+        space = grid.getItemByCoords(col, row);
         if (event.buttons === LEFT_MOUSE_BUTTON) {
-
-            if (button.status === BUTTON_STATUS_CLOSED) {
-
-                button.status = BUTTON_STATUS_OPEN;
-
+            if (space.status === BUTTON_STATUS_CLOSED) {
+                openButtonAt(col, row);
+                status_changed = true;
             }
-
         }
         else if (event.buttons === RIGHT_MOUSE_BUTTON) {
-
-            if (button.status === BUTTON_STATUS_CLOSED) {
-
-                button.status = BUTTON_STATUS_FLAGGED;
-
+            if (space.status === BUTTON_STATUS_CLOSED) {
+                space.status = BUTTON_STATUS_FLAGGED;
+                status_changed = true;
             }
-            else if (button.status === BUTTON_STATUS_FLAGGED) {
-
-                button.status = BUTTON_STATUS_CLOSED;
-
+            else if (space.status === BUTTON_STATUS_FLAGGED) {
+                space.status = BUTTON_STATUS_CLOSED;
+                status_changed = true;
             }
-
         }
 
-        grid.draw();
-
+        if (status_changed) {
+            grid.draw();
+        }
     }
-
 }
 
 function handleMouseUpEvent(event) {
-
     var x;
     var y;
     var clicked_inside_canvas;
@@ -724,15 +697,11 @@ function handleMouseUpEvent(event) {
     );
 
     if (clicked_inside_canvas) {
-
         event.preventDefault();
-
     }
-
 }
 
 function handleContextMenuEvent(event) {
-
     var x;
     var y;
     var clicked_inside_canvas;
@@ -748,66 +717,123 @@ function handleContextMenuEvent(event) {
     );
 
     if (clicked_inside_canvas) {
-
         event.preventDefault();
-
     }
-
 }
 
 function addEventHandlers() {
-
     if (isUndefined(window.addEventListener)) {
-
         reportDependencyMissingError("window.addEventListerner");
-
     }
 
     window.addEventListener("mousedown", handleMouseDownEvent);
     window.addEventListener("mouseup", handleMouseUpEvent);
     window.addEventListener("contextmenu", handleContextMenuEvent)
-
 }
 
 function createUIDiv() {
-
     var div;
 
     div = document.createElement("div");
     document.body.appendChild(div);
 
     return div;
+}
 
+function createGameStatusDisplay() {
+    var log;
+
+    log = document.createElement("span");
+    log.style.marginLeft = "8px";
+    log.style.MarginRight = "8px";
+
+    return log;
 }
 
 function openAllButtons() {
-
     var i;
     var n;
     var button;
 
     i = 0;
     n = num_rows * num_cols;
-
     for (i; i < n; i += 1) {
-
         button = grid.data[i];
-
         button.status = BUTTON_STATUS_OPEN;
-
     }
 
     grid.draw();
+}
 
+function openEmptyNeighboursByIndex(p_index) {
+    var check_list;
+    var x;
+    var y;
+    var i;
+    var n;
+    var x_off;
+    var y_off;
+    var col;
+    var row;
+    var button_index;
+    var button;
+
+    check_list = [];
+
+    x = grid.getXCoordFromIndex(p_index);
+    y = grid.getYCoordFromIndex(p_index);
+
+    // Go through all positions in a 3x3 kernel.
+    i = 0;
+    n = 9;
+    for (i; i < n; i += 1) {
+        x_off = Math.floor(1 - (i % 3));
+        y_off = Math.floor(1 - Math.floor(i / 3));
+
+        // Skip the kernel centre for now.
+        if (x_off === 0 && y_off === 0) {
+            continue;
+        }
+
+        col = x + x_off;
+        row = y + y_off;
+
+        button_index = grid.getIndexFromCoords(col, row);
+        if (button_index === -1) {
+            continue;
+        }
+
+        button = grid.data[button_index];
+        if (isUndefined(button)) {debugger;}
+        if (button.status !== BUTTON_STATUS_CLOSED) {
+            continue;
+        }
+
+        button.status = BUTTON_STATUS_OPEN;
+        // Found another empty button
+        if (button.num_mines === 0 && !button.isMine) {
+            // Ignore possible duplicates
+            if (check_list.indexOf(button_index) === -1) {
+                check_list.push(button_index);
+            }
+        }
+    }
+
+    i = 0;
+    n = check_list.length;
+    for (i; i < n; i += 1) {
+        button_index = check_list[i];
+        openEmptyNeighboursByIndex(button_index);
+    }
 }
 
 function resetGame() {
     game_status = GAME_STATUS_PLAYING;
+    game_status_display.innerHTML = "";
     grid.reset();
 }
 
 function createOpenAllButton(p_ui) {
-
     var btn;
 
     btn = document.createElement("button");
@@ -815,11 +841,9 @@ function createOpenAllButton(p_ui) {
     btn.innerHTML = "OPEN";
 
     return btn;
-
 }
 
 function createResetButton(p_ui) {
-
     var btn;
 
     btn = document.createElement("button");
@@ -827,11 +851,9 @@ function createResetButton(p_ui) {
     btn.innerHTML = "RESET";
 
     return btn;
-
 }
 
 function main() {
-
     var ui_div;
     var openAllButton;
     var resetButton;
@@ -883,6 +905,10 @@ function main() {
         eight_mine_color
     ];
 
+    background_color = color(50,50,50);
+
+    num_spaces = num_cols * num_rows;
+
     grid = createGrid(num_cols, num_rows);
 
     tile_width = button_width + gutter_size;
@@ -895,19 +921,18 @@ function main() {
     gl = canvas.getContext('2d');
 
     ui_div = createUIDiv();
+
     openAllButton = createOpenAllButton();
     resetButton = createResetButton();
+    game_status_display = createGameStatusDisplay();
 
     ui_div.appendChild(openAllButton);
     ui_div.appendChild(resetButton);
+    ui_div.appendChild(game_status_display);
 
     document.body.appendChild(canvas);
     document.body.appendChild(ui_div);
 
-    drawBackground(color(50,50,50));
-
     resetGame();
-
     addEventHandlers();
-
 }
